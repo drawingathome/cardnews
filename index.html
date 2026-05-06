@@ -1,0 +1,623 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>드로잉엣홈 카드뉴스 생성기</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css">
+<style>
+* { margin:0; padding:0; box-sizing:border-box; }
+body { background:#151515; color:#fff; font-family:'Pretendard','Apple SD Gothic Neo',sans-serif; min-height:100vh; padding:30px 16px 60px; display:flex; flex-direction:column; align-items:center; }
+h1 { font-size:13px; letter-spacing:5px; color:#666; margin-bottom:6px; text-transform:uppercase; font-weight:400; }
+.subtitle { font-size:12px; color:#444; margin-bottom:32px; letter-spacing:1px; }
+.global-settings { width:100%; max-width:900px; background:#1e1e1e; border:1px solid #2a2a2a; border-radius:8px; padding:24px; margin-bottom:24px; display:flex; gap:24px; flex-wrap:wrap; align-items:flex-end; }
+.g-group { display:flex; flex-direction:column; gap:8px; }
+.g-group label { font-size:10px; letter-spacing:2px; color:#666; text-transform:uppercase; }
+.cat-btns { display:flex; gap:6px; flex-wrap:wrap; }
+.cat-btn { padding:6px 12px; border:1px solid #333; background:transparent; color:#888; font-size:11px; letter-spacing:1px; cursor:pointer; border-radius:2px; transition:all 0.2s; font-family:inherit; }
+.cat-btn:hover,.cat-btn.active { border-color:#fff; color:#fff; background:#2a2a2a; }
+.pos-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:5px; width:110px; }
+.pos-btn { padding:6px; border:1px solid #2a2a2a; background:transparent; color:#555; font-size:16px; cursor:pointer; border-radius:2px; transition:all 0.2s; text-align:center; font-family:inherit; }
+.pos-btn:hover,.pos-btn.active { border-color:#fff; color:#fff; background:#2a2a2a; }
+.slider-row { display:flex; align-items:center; gap:10px; }
+.slider-row input[type=range] { width:110px; accent-color:#fff; }
+.slider-row span { font-size:12px; color:#666; width:36px; }
+.upload-zone { width:100%; max-width:900px; border:2px dashed #2a2a2a; border-radius:8px; padding:32px; text-align:center; cursor:pointer; transition:border-color 0.2s; margin-bottom:28px; }
+.upload-zone:hover { border-color:#555; }
+.upload-zone p { color:#555; font-size:14px; line-height:2; }
+.upload-zone p span { color:#444; font-size:12px; }
+.upload-zone input { display:none; }
+.cards-grid { width:100%; max-width:900px; display:grid; grid-template-columns:repeat(auto-fill,minmax(260px,1fr)); gap:20px; margin-bottom:32px; }
+.card-item { background:#1e1e1e; border:1px solid #2a2a2a; border-radius:8px; overflow:hidden; position:relative; transition:box-shadow 0.2s; cursor:grab; }
+.card-item:active { cursor:grabbing; }
+.card-item.dragging { opacity:0.4; box-shadow:0 0 0 2px #555; }
+.card-item.drag-over { box-shadow:0 0 0 2px #fff; }
+.card-item.cover-card { border-color:#555; cursor:default; }
+.card-badge { position:absolute; top:8px; left:10px; z-index:3; font-size:10px; letter-spacing:1px; padding:3px 8px; border-radius:2px; font-family:inherit; }
+.badge-cover { background:rgba(255,255,255,0.12); color:#ccc; border:1px solid rgba(255,255,255,0.25); }
+.badge-num { background:rgba(0,0,0,0.5); color:#aaa; }
+.card-preview { width:100%; aspect-ratio:1; display:block; background:#111; }
+.card-controls { padding:14px; display:flex; flex-direction:column; gap:10px; }
+.layout-tabs { display:flex; gap:6px; }
+.layout-tab { flex:1; padding:7px 4px; border:1px solid #2a2a2a; background:transparent; color:#666; font-size:11px; cursor:pointer; border-radius:2px; transition:all 0.2s; text-align:center; font-family:inherit; }
+.layout-tab:hover,.layout-tab.active { border-color:#fff; color:#fff; background:#2a2a2a; }
+.ctrl-label { font-size:10px; color:#555; letter-spacing:1px; margin-bottom:-4px; }
+.card-controls textarea,.card-controls input[type=text] { width:100%; background:#151515; border:1px solid #2a2a2a; border-radius:3px; color:#fff; font-size:13px; padding:10px; font-family:inherit; resize:none; outline:none; transition:border-color 0.2s; line-height:1.5; }
+.card-controls textarea:focus,.card-controls input[type=text]:focus { border-color:#555; }
+.card-controls textarea::placeholder,.card-controls input[type=text]::placeholder { color:#444; }
+.list-items { display:flex; flex-direction:column; gap:6px; }
+.list-item-row { display:flex; gap:6px; align-items:center; }
+.list-item-row input { flex:1; }
+.remove-item-btn { width:28px; height:28px; background:transparent; border:1px solid #2a2a2a; color:#555; border-radius:2px; cursor:pointer; font-size:14px; display:flex; align-items:center; justify-content:center; flex-shrink:0; transition:all 0.2s; }
+.remove-item-btn:hover { border-color:#c00; color:#c00; }
+.add-item-btn { width:100%; padding:7px; background:transparent; border:1px dashed #2a2a2a; color:#555; font-size:12px; cursor:pointer; border-radius:2px; font-family:inherit; transition:all 0.2s; }
+.add-item-btn:hover { border-color:#666; color:#aaa; }
+.card-row { display:flex; gap:8px; align-items:center; }
+.card-cat-select { flex:1; background:#151515; border:1px solid #2a2a2a; border-radius:3px; color:#aaa; font-size:12px; padding:7px 10px; font-family:inherit; outline:none; cursor:pointer; }
+.delete-btn { width:32px; height:32px; border:1px solid #2a2a2a; background:transparent; color:#555; border-radius:3px; cursor:pointer; font-size:15px; transition:all 0.2s; display:flex; align-items:center; justify-content:center; }
+.delete-btn:hover { border-color:#c00; color:#c00; }
+.btn-replace { padding:0 12px; height:32px; background:transparent; border:1px solid #2a2a2a; color:#888; border-radius:3px; cursor:pointer; font-size:11px; font-family:inherit; transition:all 0.2s; white-space:nowrap; }
+.btn-replace:hover { border-color:#fff; color:#fff; }
+/* 이미지 저장 오버레이 */
+#saveOverlay {
+  display:none; position:fixed; inset:0; background:rgba(0,0,0,0.94);
+  z-index:9999; flex-direction:column; align-items:center; justify-content:center; gap:20px;
+  padding:20px;
+}
+#saveOverlay.show { display:flex; }
+.bottom-bar { width:100%; max-width:900px; display:flex; gap:12px; flex-wrap:wrap; }
+.btn-primary { flex:1; padding:16px; background:#fff; color:#111; border:none; border-radius:4px; font-size:13px; letter-spacing:2px; cursor:pointer; font-family:inherit; font-weight:700; transition:background 0.2s; text-transform:uppercase; min-width:180px; }
+.btn-primary:hover { background:#ddd; }
+.btn-secondary { padding:16px 24px; background:transparent; color:#888; border:1px solid #333; border-radius:4px; font-size:12px; letter-spacing:1px; cursor:pointer; font-family:inherit; transition:all 0.2s; white-space:nowrap; }
+.btn-secondary:hover { border-color:#888; color:#fff; }
+.empty-state { grid-column:1/-1; text-align:center; padding:40px; color:#333; font-size:14px; }
+.cover-label { font-size:10px; color:#555; letter-spacing:2px; text-align:center; padding:4px 0 2px; text-transform:uppercase; }
+canvas { display:none; }
+</style>
+</head>
+<body>
+<!-- 이미지 저장 오버레이 (iOS용) -->
+<div id="saveOverlay">
+  <div id="overlayCounter" style="color:#666;font-size:12px;letter-spacing:2px;"></div>
+  <img id="overlayImg" src="" alt="저장할 이미지" style="max-width:92vw;max-height:62vh;object-fit:contain;border-radius:4px;">
+  <p style="color:#aaa;font-size:14px;text-align:center;line-height:2;letter-spacing:0.5px;">
+    이미지를 <strong style="color:#fff">길게 눌러</strong> 사진에 저장하세요
+  </p>
+  <div style="display:flex;gap:12px;">
+    <button id="overlayNextBtn" style="display:none;padding:12px 24px;background:#333;color:#fff;border:1px solid #555;border-radius:4px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;" onclick="overlayNext()">다음 카드 →</button>
+    <button style="padding:12px 32px;background:#fff;color:#111;border:none;border-radius:4px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;" onclick="closeSaveOverlay()">완료</button>
+  </div>
+</div>
+<h1>Drawing at Home</h1>
+<p class="subtitle">카드뉴스 생성기</p>
+<div class="global-settings">
+  <div class="g-group">
+    <label>기본 카테고리</label>
+    <div class="cat-btns" id="globalCatBtns">
+      <button class="cat-btn active" onclick="setGlobalCat(this,'공간정보')">PLACE</button>
+      <button class="cat-btn" onclick="setGlobalCat(this,'스타일링팁')">STYLING TIP</button>
+      <button class="cat-btn" onclick="setGlobalCat(this,'시공사례')">PORTFOLIO</button>
+      <button class="cat-btn" onclick="setGlobalCat(this,'PICK')">PICK</button>
+      <button class="cat-btn" onclick="setGlobalCat(this,'')">없음</button>
+    </div>
+  </div>
+  <div class="g-group">
+    <label>텍스트 위치</label>
+    <div class="pos-grid" id="globalPosBtns">
+      <button class="pos-btn" onclick="setGlobalPos(this,'top-left')">↖</button>
+      <button class="pos-btn" onclick="setGlobalPos(this,'top-center')">↑</button>
+      <button class="pos-btn" onclick="setGlobalPos(this,'top-right')">↗</button>
+      <button class="pos-btn active" onclick="setGlobalPos(this,'bottom-left')">↙</button>
+      <button class="pos-btn" onclick="setGlobalPos(this,'bottom-center')">↓</button>
+      <button class="pos-btn" onclick="setGlobalPos(this,'bottom-right')">↘</button>
+    </div>
+  </div>
+  <div class="g-group">
+    <label>글씨 크기</label>
+    <div class="slider-row">
+      <input type="range" id="globalFontSize" min="20" max="60" value="36" oninput="onGlobalChange()">
+      <span id="fontSizeVal">36</span>
+    </div>
+  </div>
+  <div class="g-group">
+    <label>사진 어둡기</label>
+    <div class="slider-row">
+      <input type="range" id="globalDim" min="0" max="80" value="40" oninput="onGlobalChange()">
+      <span id="dimVal">40%</span>
+    </div>
+  </div>
+  <div class="g-group">
+    <label>로고 크기</label>
+    <div class="slider-row">
+      <input type="range" id="logoScale" min="10" max="60" value="28" oninput="onGlobalChange()">
+      <span id="logoScaleVal">28%</span>
+    </div>
+  </div>
+</div>
+<div class="upload-zone" onclick="document.getElementById('photoInput').click()">
+  <p>📷 클릭해서 사진 업로드 (여러 장 한번에 선택 가능)<br>
+  <span>첫 번째 사진이 표지가 됩니다 — JPG, PNG 최대 20장</span></p>
+  <input type="file" id="photoInput" accept="image/*" multiple>
+</div>
+<div class="cards-grid" id="cardsGrid">
+  <div class="empty-state">사진을 업로드하면 여기에 카드가 생성돼요</div>
+</div>
+<div class="bottom-bar">
+  <button class="btn-primary" onclick="downloadAll()">전체 저장 (JPG)</button>
+  <button class="btn-secondary" onclick="downloadCurrent()">현재 카드 저장</button>
+  <button class="btn-secondary" onclick="document.getElementById('photoInput').click()">+ 사진 추가</button>
+</div>
+<p style="text-align:center;font-size:11px;color:#444;margin-top:8px;letter-spacing:1px;">
+  1080×1080px · JPG · 인스타그램 최적화
+</p>
+<canvas id="offscreen" width="1080" height="1080"></canvas>
+
+<script>
+const W=1080, H=1080, PAD=80;
+
+// ── 수정된 상수 (v17) ──
+const NUM_FS    = 52;
+const NUM_ALPHA = 0.75;   // ③ 0.68→0.75
+const CAT_FS    = 30;
+const CAT_GAP   = 14;
+const CAT_ALPHA = 0.70;   // ④ 0.78→0.70
+const DESC_FS   = 44;
+const DESC_LH   = DESC_FS*1.55; // ① 1.82→1.55
+const DESC_ALPHA= 0.74;
+const LOGO_Y    = PAD*0.85;
+const LOGO_ALPHA= 0.80;   // ⑦ 0.88→0.80
+const TITLE_GAP = 20;
+const DESC_GAP  = 30; // ✅ 18→30
+const MAG_FRAME_Y = 148;
+const TITLE_MAX_W = W-PAD*2;
+const DOT_R     = 6;
+const DOT_ALPHA = 0.70;   // ⑬ 0.60→0.70
+const ITEM_ALPHA= 0.92;   // ⑥ 0.88→0.92
+const TITLE_COLOR='rgba(255,253,250,1)'; // ⑮ 극미세 웜톤
+
+const CAT_EN={'공간정보':'PLACE','스타일링팁':'STYLING TIP','시공사례':'PORTFOLIO','PICK':'PICK','':''};
+const catLabel=c=>CAT_EN[c]||c;
+
+const canvas=document.getElementById('offscreen');
+const ctx=canvas.getContext('2d');
+const logoImg=new Image();
+logoImg.src='data:image/png;base64,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';
+
+let cards=[], globalCat='공간정보', globalPos='bottom-left';
+
+function setGlobalCat(btn,cat){
+  document.querySelectorAll('#globalCatBtns .cat-btn').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active'); globalCat=cat;
+  cards.forEach((c,i)=>{if(i>0){c.category=cat;renderCardPreview(i);}});
+  document.querySelectorAll('.card-cat-select').forEach((s,i)=>{if(i>0)s.value=cat;});
+}
+function setGlobalPos(btn,pos){
+  document.querySelectorAll('#globalPosBtns .pos-btn').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active'); globalPos=pos;
+  cards.forEach((c,i)=>{if(i>0){c.position=pos;renderCardPreview(i);}});
+}
+function onGlobalChange(){
+  document.getElementById('fontSizeVal').textContent=document.getElementById('globalFontSize').value;
+  document.getElementById('dimVal').textContent=document.getElementById('globalDim').value+'%';
+  document.getElementById('logoScaleVal').textContent=document.getElementById('logoScale').value+'%';
+  cards.forEach((_,i)=>renderCardPreview(i));
+}
+
+document.getElementById('photoInput').addEventListener('change',function(e){
+  const files=Array.from(e.target.files); if(!files.length)return;
+  let loaded=0;
+  files.forEach((file,fi)=>{
+    const reader=new FileReader();
+    reader.onload=ev=>{
+      const img=new Image();
+      img.onload=()=>{
+        cards.push({img,title:'',subtitle:'',description:'',
+          category:globalCat,position:globalPos,
+          layout:cards.length+fi===0?'cover':'basic',listItems:['','','']});
+        if(++loaded===files.length) renderGrid();
+      };
+      img.src=ev.target.result;
+    };
+    reader.readAsDataURL(file);
+  });
+  this.value='';
+});
+
+function catSelectHTML(cat,idx){
+  return ['공간정보','스타일링팁','시공사례','PICK',''].map(v=>
+    `<option value="${v}" ${v===cat?'selected':''}>${CAT_EN[v]||'카테고리 없음'}</option>`
+  ).join('');
+}
+
+function renderGrid(){
+  const grid=document.getElementById('cardsGrid');
+  grid.innerHTML='';
+  if(!cards.length){grid.innerHTML='<div class="empty-state">사진을 업로드하면 여기에 카드가 생성돼요</div>';return;}
+  cards.forEach((card,i)=>{
+    const isCover=(i===0);
+    const item=document.createElement('div');
+    item.className='card-item'+(isCover?' cover-card':'');
+    item.dataset.index=i;
+    if(!isCover) setupDrag(item,i);
+    item.innerHTML=buildCardHTML(card,i,isCover);
+    grid.appendChild(item);
+    renderCardPreview(i);
+  });
+}
+
+function buildCardHTML(card,i,isCover){
+  const badge=isCover
+    ?'<span class="card-badge badge-cover">표지</span>'
+    :`<span class="card-badge badge-num">${i} / ${cards.length-1}</span>`;
+  if(isCover){
+    return `${badge}
+      <canvas class="card-preview" id="preview_0" width="1080" height="1080"></canvas>
+      <div class="card-controls">
+        <p class="cover-label">— 표지 카드 —</p>
+        <textarea rows="2" placeholder="메인 제목" oninput="cards[0].title=this.value;renderCardPreview(0)">${card.title}</textarea>
+        <input type="text" placeholder="서브타이틀 (선택사항)" oninput="cards[0].subtitle=this.value;renderCardPreview(0)" value="${card.subtitle||''}">
+        <div class="card-row">
+          <button class="btn-replace" onclick="document.getElementById('replaceInput_0').click()">📷 사진 교체</button>
+          <button class="delete-btn" onclick="deleteCover()" title="표지 삭제">✕</button>
+          <input type="file" id="replaceInput_0" accept="image/*" style="display:none" onchange="replacePhoto(0,this)">
+        </div>
+      </div>`;
+  }
+  const tabs=['basic','list','magazine'].map(l=>{
+    const labels={basic:'기본형',list:'리스트형',magazine:'매거진형'};
+    return `<button class="layout-tab ${card.layout===l?'active':''}" onclick="setLayout(${i},'${l}')">${labels[l]}</button>`;
+  }).join('');
+  let content='';
+  if(card.layout==='list'){
+    const rows=card.listItems.map((it,li)=>`
+      <div class="list-item-row">
+        <input type="text" placeholder="항목 ${li+1}" value="${it}" oninput="onListItem(${i},${li},this.value)">
+        ${card.listItems.length>1?`<button class="remove-item-btn" onclick="removeListItem(${i},${li})">−</button>`:''}
+      </div>`).join('');
+    content=`<div class="list-items">${rows}</div>
+      ${card.listItems.length<4?`<button class="add-item-btn" onclick="addListItem(${i})">+ 항목 추가</button>`:''}`;
+  } else if(card.layout==='magazine'){
+    // 매거진형: 설명 텍스트만
+    content=`
+      <p class="ctrl-label">본문 텍스트</p>
+      <textarea rows="4" placeholder="본문 텍스트 (최대 3줄)" oninput="onDesc(${i},this.value)">${card.description||''}</textarea>`;
+  } else {
+    content=`
+      <p class="ctrl-label">제목</p>
+      <textarea rows="2" placeholder="제목" oninput="onTitle(${i},this.value)">${card.title}</textarea>
+      <p class="ctrl-label">설명 텍스트</p>
+      <textarea rows="3" placeholder="본문 설명 (선택사항)" oninput="onDesc(${i},this.value)">${card.description||''}</textarea>`;
+  }
+  const catRow=`<div class="card-row">
+    <button class="btn-replace" onclick="document.getElementById('replaceInput_${i}').click()">📷 교체</button>
+    <input type="file" id="replaceInput_${i}" accept="image/*" style="display:none" onchange="replacePhoto(${i},this)">
+    <select class="card-cat-select" onchange="onCat(${i},this.value)">${catSelectHTML(card.category,i)}</select>
+    <button class="delete-btn" onclick="deleteCard(${i})">✕</button>
+  </div>`;
+  return `${badge}
+    <canvas class="card-preview" id="preview_${i}" width="1080" height="1080"></canvas>
+    <div class="card-controls"><div class="layout-tabs">${tabs}</div>${content}${catRow}</div>`;
+}
+
+function onTitle(i,v){cards[i].title=v;renderCardPreview(i);}
+function onDesc(i,v){cards[i].description=v;renderCardPreview(i);}
+function onCat(i,v){cards[i].category=v;renderCardPreview(i);}
+function onListItem(i,li,v){cards[i].listItems[li]=v;renderCardPreview(i);}
+function addListItem(i){cards[i].listItems.push('');rebuildCard(i);}
+function removeListItem(i,li){cards[i].listItems.splice(li,1);rebuildCard(i);}
+function setLayout(i,l){cards[i].layout=l;rebuildCard(i);}
+function deleteCard(i){cards.splice(i,1);renderGrid();}
+
+// 표지 삭제 → 다음 카드가 표지가 됨
+function deleteCover(){
+  if(cards.length<=1){alert('카드가 1장뿐이라 삭제할 수 없어요.');return;}
+  cards.splice(0,1);
+  cards[0].layout='cover'; // 새 표지로 전환
+  renderGrid();
+}
+
+// 사진 교체
+function replacePhoto(idx,input){
+  const file=input.files[0]; if(!file)return;
+  const reader=new FileReader();
+  reader.onload=ev=>{
+    const img=new Image();
+    img.onload=()=>{
+      cards[idx].img=img;
+      renderCardPreview(idx);
+    };
+    img.src=ev.target.result;
+  };
+  reader.readAsDataURL(file);
+  input.value='';
+}
+function rebuildCard(i){const el=document.querySelector(`[data-index="${i}"]`);if(el){el.innerHTML=buildCardHTML(cards[i],i,i===0);renderCardPreview(i);}}
+
+let dragSrc=null;
+function setupDrag(item,i){
+  item.draggable=true;
+  item.addEventListener('dragstart',e=>{dragSrc=i;item.classList.add('dragging');e.dataTransfer.effectAllowed='move';});
+  item.addEventListener('dragend',()=>{item.classList.remove('dragging');document.querySelectorAll('.card-item').forEach(el=>el.classList.remove('drag-over'));});
+  item.addEventListener('dragover',e=>{e.preventDefault();if(dragSrc!==null&&dragSrc!==i&&i!==0){document.querySelectorAll('.card-item').forEach(el=>el.classList.remove('drag-over'));item.classList.add('drag-over');}});
+  item.addEventListener('drop',e=>{e.preventDefault();if(dragSrc===null||dragSrc===i||i===0)return;const moved=cards.splice(dragSrc,1)[0];cards.splice(i,0,moved);dragSrc=null;renderGrid();});
+}
+
+/* ── 공통 유틸 ── */
+function getLogoSize(){const s=parseInt(document.getElementById('logoScale').value)/100;return{lw:logoImg.naturalWidth*s,lh:logoImg.naturalHeight*s};}
+function drawLogo(t){if(!logoImg.complete||!logoImg.naturalWidth)return;const{lw,lh}=getLogoSize();t.globalAlpha=LOGO_ALPHA;t.drawImage(logoImg,(W-lw)/2,LOGO_Y,lw,lh);t.globalAlpha=1;}
+function applyTopGrad(t){const g=t.createLinearGradient(0,0,0,H*0.32);g.addColorStop(0,'rgba(0,0,0,0.62)');g.addColorStop(1,'rgba(0,0,0,0)');t.fillStyle=g;t.fillRect(0,0,W,H);}
+function applyBtmGrad(t){const g=t.createLinearGradient(0,H*0.44,0,H);g.addColorStop(0,'rgba(0,0,0,0)');g.addColorStop(1,'rgba(0,0,0,0.85)');t.fillStyle=g;t.fillRect(0,0,W,H);}
+function drawBg(t,card,dim){t.clearRect(0,0,W,H);const r=Math.max(W/card.img.width,H/card.img.height);const bw=card.img.width*r,bh=card.img.height*r;t.drawImage(card.img,(W-bw)/2,(H-bh)/2,bw,bh);t.fillStyle=`rgba(0,0,0,${dim})`;t.fillRect(0,0,W,H);}
+
+// 어절 단위 줄바꿈 + 말줄임
+function wrapWords(t,text,maxW,maxLines){
+  if(!text)return[];
+  const words=text.split(' ');let lines=[],cur='';
+  for(let w of words){const test=cur?cur+' '+w:w;if(t.measureText(test).width>maxW&&cur!==''){lines.push(cur);cur=w;}else cur=test;}
+  if(cur)lines.push(cur);
+  if(maxLines&&lines.length>maxLines){
+    lines=lines.slice(0,maxLines);
+    let last=lines[maxLines-1];
+    while(t.measureText(last+'…').width>maxW&&last.length>0)last=last.slice(0,-1);
+    lines[maxLines-1]=last+'…';
+  }
+  return lines;
+}
+function wrapTitle(t,text,maxW){
+  const manual=(text||'').split('\n');const result=[];
+  for(const m of manual)result.push(...wrapWords(t,m,maxW,2));
+  return result.slice(0,3);
+}
+
+// 번호+카테고리 한 줄
+function drawNumCat(t,numStr,cat,x,y){
+  t.save();t.textAlign='left';
+  t.font=`200 ${NUM_FS}px 'Pretendard',sans-serif`;
+  t.fillStyle=`rgba(255,253,250,${NUM_ALPHA})`;
+  t.letterSpacing='1px';t.fillText(numStr,x,y);
+  const numW=t.measureText(numStr).width;
+  if(cat){
+    t.font=`500 ${CAT_FS}px 'Pretendard',sans-serif`;
+    t.fillStyle=`rgba(255,253,250,${CAT_ALPHA})`;
+    t.letterSpacing='2px';
+    t.fillText(catLabel(cat),x+numW+CAT_GAP,y-(NUM_FS-CAT_FS)*0.35);
+  }
+  t.restore();
+}
+
+// ⑪ 제목 텍스트 쉐도우 (제목에만)
+function setTitleShadow(t){
+  t.shadowColor='rgba(0,0,0,0.25)';
+  t.shadowBlur=6;
+  t.shadowOffsetX=0; t.shadowOffsetY=1;
+}
+function clearShadow(t){t.shadowColor='transparent';t.shadowBlur=0;}
+
+/* ── 표지형 ── */
+function drawCover(t,card,fs){
+  const tG=t.createLinearGradient(0,0,0,H*0.32);tG.addColorStop(0,'rgba(0,0,0,0.55)');tG.addColorStop(1,'rgba(0,0,0,0)');t.fillStyle=tG;t.fillRect(0,0,W,H);
+  const bG=t.createLinearGradient(0,H*0.50,0,H);bG.addColorStop(0,'rgba(0,0,0,0)');bG.addColorStop(1,'rgba(0,0,0,0.80)');t.fillStyle=bG;t.fillRect(0,0,W,H);
+  drawLogo(t);
+  const coverFS=Math.min(fs*1.1,108);
+  const subFS=Math.round(coverFS*0.40);
+  const titleLH=coverFS*1.28;
+  t.save();t.font=`700 ${coverFS}px 'Pretendard',sans-serif`;
+  const titleLines=wrapTitle(t,card.title,TITLE_MAX_W);t.restore();
+  // ⑨ PAD*1.4
+  const titleY=H-PAD*1.4-(titleLines.length-1)*titleLH;
+  // ⑧ 간격 36px
+  const subY=titleY-coverFS-36;
+  if(card.subtitle){
+    t.save();t.font=`400 ${subFS}px 'Pretendard',sans-serif`;
+    t.fillStyle=`rgba(255,253,250,0.74)`; // ⑭ 0.80→0.74
+    t.textAlign='left';t.letterSpacing='0px';
+    t.fillText(wrapWords(t,card.subtitle,TITLE_MAX_W,1)[0]||'',PAD,subY);t.restore();
+  }
+  if(titleLines.length){
+    t.save();setTitleShadow(t); // ⑪
+    t.font=`700 ${coverFS}px 'Pretendard',sans-serif`;
+    t.fillStyle=TITLE_COLOR; // ⑮
+    t.textAlign='left';t.letterSpacing='0px';
+    titleLines.forEach((l,i)=>t.fillText(l,PAD,titleY+i*titleLH));
+    clearShadow(t);t.restore();
+  }
+}
+
+/* ── 기본형 ── */
+function drawBasic(t,card,fs,idx){
+  applyTopGrad(t);applyBtmGrad(t);drawLogo(t);
+  const titleFS=Math.min(fs*1.05,100);
+  const titleLH=titleFS*1.25; // ② 1.30→1.25
+  const desc=card.description||'';
+  t.save();
+  t.font=`700 ${titleFS}px 'Pretendard',sans-serif`;
+  const titleLines=wrapTitle(t,card.title,TITLE_MAX_W);
+  t.font=`400 ${DESC_FS}px 'Pretendard',sans-serif`;
+  const dLines=wrapWords(t,desc,TITLE_MAX_W,2);t.restore();
+  const descH=desc?dLines.length*DESC_LH+DESC_GAP:0;
+  const blockH=NUM_FS+TITLE_GAP+titleLines.length*titleLH+descH;
+  const maxTop=desc?H*0.68:H*0.62;
+  const blockTop=Math.min(H-PAD*1.4-blockH,maxTop);
+  const numY=blockTop+NUM_FS;
+  const titleY=numY+TITLE_GAP+titleFS;
+  drawNumCat(t,String(idx).padStart(2,'0'),card.category,PAD,numY);
+  t.save();setTitleShadow(t); // ⑪
+  t.font=`700 ${titleFS}px 'Pretendard',sans-serif`;
+  t.fillStyle=TITLE_COLOR;t.textAlign='left';t.letterSpacing='0px';
+  titleLines.forEach((l,i)=>t.fillText(l,PAD,titleY+i*titleLH));
+  clearShadow(t);t.restore();
+  if(desc&&dLines.length){
+    t.save();t.font=`400 ${DESC_FS}px 'Pretendard',sans-serif`;
+    t.fillStyle=`rgba(255,253,250,${DESC_ALPHA})`; // ⑤
+    t.textAlign='left';t.letterSpacing='0px';
+    const dY=titleY+(titleLines.length-1)*titleLH+DESC_GAP+DESC_FS;
+    dLines.forEach((l,i)=>t.fillText(l,PAD,dY+i*DESC_LH));t.restore();
+  }
+}
+
+/* ── 리스트형 ── */
+function drawList(t,card,fs,idx){
+  const g=t.createLinearGradient(0,H*0.32,0,H);
+  g.addColorStop(0,'rgba(0,0,0,0)');g.addColorStop(1,'rgba(0,0,0,0.75)');
+  t.fillStyle=g;t.fillRect(0,0,W,H);
+  applyTopGrad(t);drawLogo(t);
+  const items=card.listItems.slice(0,4).filter(s=>s&&s.trim());
+  const itemFS=Math.min(fs*0.52,50);
+  const itemLH=itemFS*1.52;
+  const numCatH=NUM_FS+20;
+  const totalH=numCatH+items.length*itemLH;
+  // ⑩ PAD*1.6
+  const blockTop=H-PAD*1.6-totalH;
+  const numY=blockTop+NUM_FS;
+  drawNumCat(t,String(idx).padStart(2,'0'),card.category,PAD,numY);
+  const itemStartY=numY+20+itemFS;
+  items.forEach((item,i)=>{
+    const y=itemStartY+i*itemLH;
+    if(y>H-PAD)return;
+    t.beginPath();t.arc(PAD+DOT_R,y-itemFS*0.32,DOT_R,0,Math.PI*2);
+    t.fillStyle=`rgba(255,253,250,${DOT_ALPHA})`;t.fill(); // ⑬
+    t.save();t.font=`400 ${itemFS}px 'Pretendard',sans-serif`;
+    t.fillStyle=`rgba(255,253,250,${ITEM_ALPHA})`; // ⑥
+    t.textAlign='left';t.letterSpacing='0px';
+    const maxW=W-PAD*2-DOT_R*2-14;
+    const line=wrapWords(t,item,maxW,1)[0]||item;
+    t.fillText(line,PAD+DOT_R*2+14,y);t.restore();
+  });
+}
+
+/* ── 매거진형 — 제목 없음, 설명 텍스트 중심 ── */
+function drawMagazine(t,card,fs,idx){
+  t.fillStyle='#1a1a1c';t.fillRect(0,0,W,H);
+  drawLogo(t);
+  const frameX=PAD,frameY=MAG_FRAME_Y,frameW=W-PAD*2,frameH=H*0.50;
+  t.save();t.beginPath();t.rect(frameX,frameY,frameW,frameH);t.clip();
+  const r=Math.max(frameW/card.img.width,frameH/card.img.height);
+  const bw=card.img.width*r,bh=card.img.height*r;
+  t.drawImage(card.img,frameX+(frameW-bw)/2,frameY+(frameH-bh)/2,bw,bh);
+  t.restore();
+  const frameBotY=frameY+frameH,remaining=H-frameBotY;
+  const desc=card.description||'';
+  t.save();t.font=`400 ${DESC_FS}px 'Pretendard',sans-serif`;
+  const dLines=wrapWords(t,desc,TITLE_MAX_W,3); // 최대 3줄
+  t.restore();
+  const descH=desc?dLines.length*DESC_LH:0;
+  const blockH=NUM_FS+24+descH;
+  const blockTop=Math.max(frameBotY+32,frameBotY+(remaining-blockH)*0.70);
+  const numY=blockTop+NUM_FS;
+  // 번호+카테고리
+  drawNumCat(t,String(idx).padStart(2,'0'),card.category,PAD,numY);
+  // 설명 텍스트 (제목 없음, 더 크게)
+  if(desc&&dLines.length){
+    const MAG_DESC_FS=Math.min(fs*0.56,52); // 설명을 좀 더 크게
+    t.save();t.font=`400 ${MAG_DESC_FS}px 'Pretendard',sans-serif`;
+    const magDLines=wrapWords(t,desc,TITLE_MAX_W,3);
+    const MAG_DESC_LH=MAG_DESC_FS*1.48;
+    t.fillStyle=`rgba(255,253,250,0.88)`; // 설명이 메인이므로 더 밝게
+    t.textAlign='left';t.letterSpacing='0px';
+    const dY=numY+30+MAG_DESC_FS;
+    magDLines.forEach((l,i)=>t.fillText(l,PAD,dY+i*MAG_DESC_LH));
+    t.restore();
+  }
+}
+
+function drawToCanvas(t,card,i){
+  const fs=parseInt(document.getElementById('globalFontSize').value)*2.2;
+  const dim=parseInt(document.getElementById('globalDim').value)/100;
+  t.clearRect(0,0,W,H);
+  if(i===0){drawBg(t,card,dim);drawCover(t,card,fs);}
+  else if(card.layout==='list'){drawBg(t,card,dim);drawList(t,card,fs,i);}
+  else if(card.layout==='magazine'){drawMagazine(t,card,fs,i);}
+  else{drawBg(t,card,dim);drawBasic(t,card,fs,i);}
+}
+function renderCardPreview(i){const pc=document.getElementById(`preview_${i}`);if(!pc)return;drawToCanvas(pc.getContext('2d'),cards[i],i);}
+// iOS 감지
+const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+
+// 공통 저장 함수 — iOS: 오버레이, PC/Android: 직접 다운로드
+function saveCanvas(filename){
+  const quality=0.92;
+  const dataUrl=canvas.toDataURL('image/jpeg',quality);
+
+  if(isIOS){
+    // iOS: 오버레이에 이미지 표시 → 길게 눌러 저장
+    const overlay=document.getElementById('saveOverlay');
+    const img=document.getElementById('overlayImg');
+    const label=document.getElementById('overlayLabel');
+    img.src=dataUrl;
+    if(label) label.textContent=filename;
+    // 전체 저장 중이면 "다음 카드" 버튼 표시
+    const nextBtn=document.getElementById('overlayNextBtn');
+    if(nextBtn) nextBtn.style.display=window._iosNextCard?'block':'none';
+    overlay.classList.add('show');
+  } else {
+    // PC / Android: 직접 다운로드
+    const a=document.createElement('a');
+    a.download=filename;
+    a.href=dataUrl;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+  }
+}
+
+function closeSaveOverlay(){
+  document.getElementById('saveOverlay').classList.remove('show');
+  document.getElementById('overlayImg').src='';
+  window._iosNextCard=null;
+}
+function overlayNext(){
+  // 다음 카드 표시
+  if(window._iosNextCard) window._iosNextCard();
+}
+
+// 현재 카드 저장
+function downloadCurrent(){
+  if(!cards.length){alert('사진을 먼저 업로드해주세요!');return;}
+  // 현재 화면에 보이는 첫 번째 카드 저장
+  const visibleCards=document.querySelectorAll('.card-item');
+  let targetIdx=0;
+  for(let el of visibleCards){
+    const rect=el.getBoundingClientRect();
+    if(rect.top>=0&&rect.top<window.innerHeight){
+      targetIdx=parseInt(el.dataset.index)||0;
+      break;
+    }
+  }
+  targetIdx=Math.min(Math.max(0,targetIdx),cards.length-1); // 범위 보호
+  drawToCanvas(ctx,cards[targetIdx],targetIdx);
+  const label=targetIdx===0?'표지':cards[targetIdx].layout;
+  saveCanvas(`DAH_${String(targetIdx).padStart(2,'0')}_${label}.jpg`);
+}
+
+// 전체 저장
+async function downloadAll(){
+  if(!cards.length){alert('사진을 먼저 업로드해주세요!');return;}
+  // iOS: 순서 표시 후 한 장씩 오버레이로 저장
+  if(isIOS){
+    let idx=0;
+    function showNext(){
+      if(idx>=cards.length)return;
+      drawToCanvas(ctx,cards[idx],idx);
+      const label=idx===0?'표지':cards[idx].layout;
+      const filename=`DAH_${String(idx).padStart(2,'0')}_${label}.jpg`;
+      // 오버레이에 카드번호 안내 추가
+      const counter=document.getElementById('overlayCounter');
+      if(counter) counter.textContent=`${idx+1} / ${cards.length}`;
+      saveCanvas(filename);
+      idx++;
+    }
+    // 오버레이 닫을 때 다음 카드 자동 표시
+    window._iosNextCard=showNext;
+    showNext();
+    return;
+  }
+  for(let i=0;i<cards.length;i++){
+    drawToCanvas(ctx,cards[i],i);
+    const label=i===0?'표지':cards[i].layout;
+    saveCanvas(`DAH_${String(i).padStart(2,'0')}_${label}.jpg`);
+    await new Promise(r=>setTimeout(r,400));
+  }
+}
+</script>
+</body>
+</html>
